@@ -351,16 +351,152 @@ https://stackoverflow.com/questions/7621520/element-wise-vector-vector-multiplic
 
 
 
+static void use_sgemm_on_binary_matrix()
+{
+    constexpr size_t matrix_num_cols =  4;
+    constexpr size_t matrix_num_rows = 10;
+
+    constexpr size_t matrix_element_count
+        = matrix_num_cols * matrix_num_rows;
+
+    // Very small matrices, no need to use heap
+    // Unpadded row-major representation for simplicity
+    const float matrix1[] =
+    { /* 1  */   1,      1,      0,      0,
+      /* 2  */   1,      0,      1,      0,
+      /* 3  */   1,      0,      0,      1,
+      /* 4  */   1,      0,      0,      0,
+      /* 5  */   0,      1,      0,      1,
+      /* 6  */   0,      1,      1,      0,
+      /* 7  */   0,      1,      0,      0,
+      /* 8  */   0,      0,      1,      1,
+      /* 9  */   0,      0,      1,      0,
+      /* 10 */   0,      0,      0,      1,
+    };
+
+    // Recall std::size gives count, not size like sizeof
+    static_assert( std::size(matrix1) == matrix_element_count );
+
+//  float matrix2[] =
+//  { 2.0f, 0.0f, 0.0f,
+//    0.0f, 2.0f, 0.0f,
+//    0.0f, 0.0f, 2.0f
+//  };
+//  static_assert( std::size(matrix2) == square_matrix_count );
+
+    float output_matrix[matrix_element_count] = {0.0f};
+    // https://www.netlib.org/clapack/cblas/dgemm.c
+    // https://www.math.utah.edu/software/lapack/lapack-blas/dsymm.html
+    // say that:
+    //   When BETA is supplied as zero then C need not be set on input.
+
+    // Recall that lda and ldb are for customising stride (e.g. padding)
+
+// From https://www.netlib.org/lapack/explore-html/dd/d09/group__gemm_ga8cad871c590600454d22564eff4fed6b.html#ga8cad871c590600454d22564eff4fed6b :
+//
+//     SGEMM  performs one of the matrix-matrix operations
+//
+//        C := alpha*op( A )*op( B ) + beta*C,
+//
+//     where  op( X ) is one of
+//
+//        op( X ) = X   or   op( X ) = X**T,
+//
+//     alpha and beta are scalars, and A, B and C are matrices, with:
+//       op( A ) an m by k matrix
+//       op( B ) a  k by n matrix
+//       C an m by n matrix
+
+// TODO try this using LAPACKE_sgemqr
+    // Recall CBLAS_ORDER and CBLAS_LAYOUT are synonyms.
+    // Recall also that cblas_sgemm returns NULL.
+if (false)
+    cblas_sgemm(
+        CBLAS_ORDER::CblasRowMajor,    // CBLAS_LAYOUT layout
+        CBLAS_TRANSPOSE::CblasTrans,   // CBLAS_TRANSPOSE TransA
+        CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransB
+
+        matrix_num_cols,               // const CBLAS_INDEX M
+        matrix_num_cols,               // const CBLAS_INDEX N
+        matrix_num_rows,               // const CBLAS_INDEX K
+
+        1.0f,                          // const float alpha
+
+        matrix1,                       // const float *A
+        matrix_num_cols,               // const CBLAS_INDEX lda
+
+        matrix1,                       // const float *B
+        matrix_num_cols,               // const CBLAS_INDEX ldb
+
+        0.0f,                          // const float beta
+
+        output_matrix,                 // float *C
+        matrix_num_cols                // const CBLAS_INDEX ldc
+    );
+
+
+/*
+Signature:
+
+lapack_int LAPACKE_sgemqrt(
+    int          matrix_layout,
+    char         side,
+    char         trans,
+    lapack_int   m,
+    lapack_int   n,
+    lapack_int   k,
+    lapack_int   nb,
+    const float* v,
+    lapack_int   ldv,
+    const float* t,
+    lapack_int   ldt,
+    float*       c,
+    lapack_int   ldc
+);
+
+*/
+#if 0
+lapack_int result_status = LAPACKE_sgemqrt(
+                         // int          matrix_layout,
+                         // char         side,
+                         // char         trans,
+                         // lapack_int   m,
+                         // lapack_int   n,
+                         // lapack_int   k,
+                         // lapack_int   nb,
+                         // const float* v,
+                         // lapack_int   ldv,
+                         // const float* t,
+                         // lapack_int   ldt,
+                         // float*       c,
+                         // lapack_int   ldc
+);
+#endif
+
+LAPACKE_sgemm;
+
+
+    std::cout << "Output of matrix multiplication using doubles:\n";
+    std::cout << output_matrix[0]  << ' ' << output_matrix[1]  << ' ' << output_matrix[2]  << ' ' << output_matrix[3]  << '\n';
+    std::cout << output_matrix[4]  << ' ' << output_matrix[5]  << ' ' << output_matrix[6]  << ' ' << output_matrix[7]  << '\n';
+    std::cout << output_matrix[8]  << ' ' << output_matrix[9]  << ' ' << output_matrix[10] << ' ' << output_matrix[11] << '\n';
+    std::cout << output_matrix[12] << ' ' << output_matrix[13] << ' ' << output_matrix[14] << ' ' << output_matrix[15] << '\n';
+    std::cout << std::endl;
+}
+
+
+
 int main(int argc, char *argv[])
 {
     // Assuming we're using OpenBLAS header file and binary:
 //  std::cout << openblas_get_config() << '\n';
 //  std::cout << std::endl;
 
-    use_sgemm();
-    use_dgemm();
-    use_invert_matrix();
-    use_dtbmv();
+//  use_sgemm();
+//  use_dgemm();
+//  use_invert_matrix();
+//  use_dtbmv();
+    use_sgemm_on_binary_matrix();
 
     return 0;
 }
