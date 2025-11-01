@@ -225,6 +225,7 @@ static void use_dgemm()
 
 
 
+// TODO optional buffer parameter.
 // Based on https://stackoverflow.com/a/3525136/
 // Inverts a square matrix, of extent N, in-place.
 // Returns 0 if successful, non-zero otherwise (e.g. if matrix is singular).
@@ -261,21 +262,24 @@ static void use_dgemm()
             pivot_indices_raw, // lapack_int*       ipiv
             &status            // lapack_int*       info
         );
+        // Per documentation, pivot_indices_raw is now populated. A now holds
+        // the sum of the upper and lower triangular matrices, except that the
+        // unit diagonal elements of the lower triangular matrix are discarded
+        // prior to that sum.
+        // If input matrix is singular, status will now be positive (nonzero).
 
-
-        // If input matrix is singular, status will now not equal zero
         if (status == 0) {
             // Second step: matrix inversion proper.
             // Documentation of the FORTRAN interface:
             // https://www.netlib.org/lapack/explore-html/da/d28/group__getri_ga8b6904853957cfb37eba1e72a3f372d2.html#ga8b6904853957cfb37eba1e72a3f372d2
             LAPACK_dgetri(
-                &N,                           // lapack_int const* n
-                A,                            // double*           A
-                &N,                           // lapack_int const* lda
-                pivot_indices_raw,            // lapack_int const* ipiv
-                working_buffer_raw,           // double*           work
-                &working_buffer_num_elements, // lapack_int const* lwork
-                &status                       // lapack_int*       info
+                &N,                           // lapack_int const* n      (in)
+                A,                            // double*           A      (in,out)
+                &N,                           // lapack_int const* lda    (in)
+                pivot_indices_raw,            // lapack_int const* ipiv   (in)
+                working_buffer_raw,           // double*           work   (out)
+                &working_buffer_num_elements, // lapack_int const* lwork  (in)
+                &status                       // lapack_int*       info   (out)
             );
         }
     }
@@ -288,8 +292,8 @@ static void use_dgemm()
 
 
 
-
-static void use_invert_matrix_for_polynomial_regresssion()
+// Unoptimised variant
+static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
 {
     // Recall it's a row per object, and a column per variable.
     // Recall also there must be strictly more rows (objects) than cols (vars).
@@ -378,6 +382,214 @@ static void use_invert_matrix_for_polynomial_regresssion()
 
         the_design_matrix,             // const double *B
         design_matrix_num_columns,     // const CBLAS_INDEX ldb
+        0.0,                           // const double beta
+
+        left_matrix_or_inverse,        // double *C
+        design_matrix_num_columns      // const CBLAS_INDEX ldc
+    );
+
+
+    // Print left_matrix_or_inverse (not yet inverted).
+    // Recall it's a symmetric square matrix.
+    {
+        std::cout << "Printing left_matrix_or_inverse (not yet inverted):\n";
+        std::size_t idx = 0;
+        for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
+        {
+            for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
+            {
+                std::cout << std::setw(16); // Must call this every time
+                std::cout << left_matrix_or_inverse[idx];
+                ++idx;
+            }
+            std::cout << '\n';
+        }
+        std::cout << std::endl;
+    }
+
+
+    if ( 0 == invert_matrix(left_matrix_or_inverse, design_matrix_num_columns) )
+    {
+        {
+            std::cout << "Printing left_matrix_or_inverse (now inverted):\n";
+            std::size_t idx = 0;
+            for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
+            {
+                for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
+                {
+                    std::cout << std::setw(16); // Must call this every time
+                    std::cout << left_matrix_or_inverse[idx];
+                    ++idx;
+                }
+                std::cout << '\n';
+            }
+            std::cout << std::endl;
+        }
+
+        // Now compute product of transposed design matrix, and the y column vector.
+        // This gives a column vector with the same number of rows as the transposed design matrix,
+        // i.e. the number of columns in the design matrix.
+        {
+            double rhs_col_vec[design_matrix_num_columns] = {0.0};
+
+            cblas_dgemm(
+                CBLAS_LAYOUT::CblasRowMajor,   // CBLAS_LAYOUT layout
+                CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransA
+                CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransB
+
+                design_matrix_num_columns,     // const CBLAS_INDEX M // Num rows, matrix A
+                1,                             // const CBLAS_INDEX N // Num cols, matrix B
+                design_matrix_num_rows,        // const CBLAS_INDEX K // Num cols of matrix A and num rows of B
+
+                1.0,                           // const double alpha
+                the_design_matrix_transposed,  // const double *A
+                design_matrix_num_rows,        // const CBLAS_INDEX lda
+                 // i.e. num cols in the transposed matrix
+
+                the_y_vector,                  // const double *B
+                1,                             // const CBLAS_INDEX ldb
+                0.0,                           // const double beta
+
+                rhs_col_vec,                   // double *C
+                1                              // const CBLAS_INDEX ldc
+            );
+
+            std::cout << "Product of transposed design matrix, and the y column vector:\n";
+            for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
+            {
+                std::cout << rhs_col_vec[idx];
+                std::cout << '\n';
+            }
+            std::cout << std::endl;
+
+            // Final product, of the inverted matrix and the right-hand-side
+            // column vector. This gives a column vector.
+            // Num of rows equals that of the inverted matrix
+            // (recall it's a square matrix of extent design_matrix_num_columns).
+            // TODO can we reuse buffers? Reduce numbers of buffers we allocate?
+            {
+                double beta_col_vec[design_matrix_num_columns] = {0.0};
+
+                cblas_dgemm(
+                    CBLAS_LAYOUT::CblasRowMajor,   // CBLAS_LAYOUT layout
+                    CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransA
+                    CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransB
+
+                    design_matrix_num_columns,     // const CBLAS_INDEX M // Num rows, matrix A
+                    1,                             // const CBLAS_INDEX N // Num cols, matrix B
+                    design_matrix_num_columns,     // const CBLAS_INDEX K // Num cols of matrix A and num rows of B
+
+                    1.0,                           // const double alpha
+                    left_matrix_or_inverse,        // const double *A
+                    design_matrix_num_columns,     // const CBLAS_INDEX lda
+
+                    rhs_col_vec,                   // const double *B
+                    1,                             // const CBLAS_INDEX ldb
+                    0.0,                           // const double beta
+
+                    beta_col_vec,                  // double *C
+                    1                              // const CBLAS_INDEX ldc
+                );
+
+                std::cout << "Final beta vector:\n";
+                for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
+                {
+                    std::cout << beta_col_vec[idx];
+                    std::cout << '\n';
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+    else
+    {
+        std::cerr << "Matrix inversion failed. Was the matrix singular?";
+        std::cerr << std::endl;
+    }
+}
+
+
+
+static void use_invert_matrix_for_polynomial_regresssion_optimized()
+{
+    // Recall it's a row per object, and a column per variable.
+    // Recall also there must be strictly more rows (objects) than cols (vars).
+    constexpr std::size_t design_matrix_num_rows    = 5;
+    constexpr std::size_t design_matrix_num_columns = 3;
+
+    constexpr std::size_t design_matrix_count
+      = design_matrix_num_columns * design_matrix_num_rows;
+
+
+// All 1s
+//  double the_y_vector[] = // Column vector
+//  { 1.0,
+//    1.0,
+//    1.0,
+//    1.0,
+//    1.0
+//  };
+
+// Straight line of gradient 1 passing through the origin:
+//  double the_y_vector[] = // Column vector
+//  { 1.0,
+//    2.0,
+//    3.0,
+//    4.0,
+//    5.0
+//  };
+
+// Like 'y=x^2'
+//  double the_y_vector[] = // Column vector
+//  { 1.0,
+//    4.0,
+//    9.0,
+//   16.0,
+//   25.0
+//  };
+
+// Like 'y = (x+1)^2 + 10', i.e. 'y = x^2 + 2x + 1 + 10'
+    double the_y_vector[] = // Column vector
+    { 4.0 + 10.0,
+      9.0 + 10.0,
+     16.0 + 10.0,
+     25.0 + 10.0,
+     36.0 + 10.0
+    };
+
+    static_assert( std::size(the_y_vector) == design_matrix_num_rows );
+
+    // Makes more sense to hold the transpose
+    double the_design_matrix_transposed[] =
+    {
+        1.0,         1.0,         1.0,         1.0,         1.0,        // Always 1
+        1.0,         2.0,         3.0,         4.0,         5.0,        // X^1
+        (1.0 * 1.0), (2.0 * 2.0), (3.0 * 3.0), (4.0 * 4.0), (5.0 * 5.0) // X^2
+    };
+    static_assert( std::size(the_design_matrix_transposed) == design_matrix_count );
+
+
+    // Compute product of transpose of design matrix, and design matrix.
+    // Later this array will hold the inverse of that matrix.
+    double left_matrix_or_inverse[design_matrix_count] = {0.0};
+
+    // TODO optimise away the explicit transposed matrix
+    cblas_dgemm(
+        CBLAS_LAYOUT::CblasRowMajor,   // CBLAS_LAYOUT layout
+        CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransA
+        CBLAS_TRANSPOSE::CblasTrans,   // CBLAS_TRANSPOSE TransB // Take the transpose of the transposed matrix
+
+        design_matrix_num_columns,     // const CBLAS_INDEX M // Num rows, matrix A
+        design_matrix_num_columns,     // const CBLAS_INDEX N // Num cols, matrix B
+        design_matrix_num_rows,        // const CBLAS_INDEX K // Num cols of matrix A and num rows of B
+
+        1.0,                           // const double alpha
+        the_design_matrix_transposed,  // const double *A
+        design_matrix_num_rows,        // const CBLAS_INDEX lda
+         // i.e. num cols in the transposed matrix
+
+        the_design_matrix_transposed,  // const double *B
+        design_matrix_num_rows,        // const CBLAS_INDEX ldb  // Transpose, so ...rows not ...columns
         0.0,                           // const double beta
 
         left_matrix_or_inverse,        // double *C
@@ -803,7 +1015,8 @@ int main(int argc, char *argv[])
 //  use_dtbmv();
 //  use_sgemm_on_binary_matrix();
 //  use_sgemm_block_matrices();
-    use_invert_matrix_for_polynomial_regresssion();
+    use_invert_matrix_for_polynomial_regresssion_unoptimized();
+    use_invert_matrix_for_polynomial_regresssion_optimized();
 
     return 0;
 }
