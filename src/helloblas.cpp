@@ -17,6 +17,7 @@
 #include <cblas.h> // Whichever cblas.h is the system default
 // #include "cblas-openblas.h" // Specifically the OpenBLAS header
 
+#define FMT_WIDTH 16
 
 
 static void use_sgemm()
@@ -157,7 +158,7 @@ static void use_sgemm_block_matrices()
     {
         for (std::size_t col_counter = 0; col_counter != square_matrix_order; ++col_counter)
         {
-            std::cout << std::setw(8); // Must call this every time
+            std::cout << std::setw(FMT_WIDTH); // Must call this every time
             std::cout << output_matrix[idx];
             ++idx;
         }
@@ -398,7 +399,7 @@ static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
         {
             for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
             {
-                std::cout << std::setw(16); // Must call this every time
+                std::cout << std::setw(FMT_WIDTH); // Must call this every time
                 std::cout << left_matrix_or_inverse[idx];
                 ++idx;
             }
@@ -417,7 +418,7 @@ static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
             {
                 for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
                 {
-                    std::cout << std::setw(16); // Must call this every time
+                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
                     std::cout << left_matrix_or_inverse[idx];
                     ++idx;
                 }
@@ -457,6 +458,7 @@ static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
             std::cout << "Product of transposed design matrix, and the y column vector:\n";
             for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
             {
+                std::cout << std::setw(FMT_WIDTH); // Must call this every time
                 std::cout << rhs_col_vec[idx];
                 std::cout << '\n';
             }
@@ -494,6 +496,7 @@ static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
                 std::cout << "Final beta vector:\n";
                 for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
                 {
+                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
                     std::cout << beta_col_vec[idx];
                     std::cout << '\n';
                 }
@@ -606,7 +609,7 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
         {
             for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
             {
-                std::cout << std::setw(16); // Must call this every time
+                std::cout << std::setw(FMT_WIDTH); // Must call this every time
                 std::cout << left_matrix_or_inverse[idx];
                 ++idx;
             }
@@ -626,7 +629,7 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
             {
                 for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
                 {
-                    std::cout << std::setw(16); // Must call this every time
+                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
                     std::cout << left_matrix_or_inverse[idx];
                     ++idx;
                 }
@@ -666,6 +669,7 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
             std::cout << "Product of transposed design matrix, and the y column vector:\n";
             for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
             {
+                std::cout << std::setw(FMT_WIDTH); // Must call this every time
                 std::cout << rhs_col_vec[idx];
                 std::cout << '\n';
             }
@@ -699,6 +703,7 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
                 std::cout << "Final beta vector:\n";
                 for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
                 {
+                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
                     std::cout << beta_col_vec[idx];
                     std::cout << '\n';
                 }
@@ -1013,6 +1018,7 @@ int main(int argc, char *argv[])
 //  use_sgemm_on_binary_matrix();
 //  use_sgemm_block_matrices();
     use_invert_matrix_for_polynomial_regresssion_unoptimized();
+    std::cout << "\n--------\n\n";
     use_invert_matrix_for_polynomial_regresssion_optimized();
 
     return 0;
