@@ -226,25 +226,26 @@ static void use_dgemm()
 
 
 // Based on https://stackoverflow.com/a/3525136/
-// Inverts a matrix in-place.
-// Returns 0 if successful, non-zero otherwise. Never throws.
+// Inverts a square matrix, of extent N, in-place.
+// Returns 0 if successful, non-zero otherwise (e.g. if matrix is singular).
+// Never throws.
 // Failure does not guarantee the matrix is unmodified.
 [[nodiscard]] static lapack_int invert_matrix(double* A, lapack_int N) noexcept
 {
-    lapack_int status;
+    lapack_int status = -1;
 
     try
     {
-        lapack_int working_buffer_num_elements = N * N; // Assume no overflow
+        const lapack_int working_buffer_num_elements = N * N; // Assume no overflow
 
-        std::unique_ptr<lapack_int[]> pivot_indices_uniqueptr
+        const std::unique_ptr<lapack_int[]> pivot_indices_uniqueptr
           = std::make_unique<lapack_int[]>(N);
-        lapack_int *pivot_indices_raw = pivot_indices_uniqueptr.get();
+        lapack_int * const pivot_indices_raw = pivot_indices_uniqueptr.get();
 
     //  Array of double, with capacity MAX(1,working_buffer_num_elements)
-        std::unique_ptr<double[]> working_buffer_uniqueptr
+        const std::unique_ptr<double[]> working_buffer_uniqueptr
           = std::make_unique<double[]>(working_buffer_num_elements);
-        double *working_buffer_raw = working_buffer_uniqueptr.get();
+        double * const working_buffer_raw = working_buffer_uniqueptr.get();
 
         // We can see the conventional style in:
         // https://www.netlib.org/lapack/lapacke.html
