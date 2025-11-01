@@ -616,6 +616,7 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
     }
 
 
+    // Here we don't take advantage of the matrix being symmetric:
     if ( 0 == invert_matrix(left_matrix_or_inverse, design_matrix_num_columns) )
     {
         {
@@ -678,25 +679,21 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
             {
                 double beta_col_vec[design_matrix_num_columns] = {0.0};
 
-                cblas_dgemm(
-                    CBLAS_LAYOUT::CblasRowMajor,   // CBLAS_LAYOUT layout
-                    CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransA
-                    CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransB
-
-                    design_matrix_num_columns,     // const CBLAS_INDEX M // Num rows, matrix A
-                    1,                             // const CBLAS_INDEX N // Num cols, matrix B
-                    design_matrix_num_columns,     // const CBLAS_INDEX K // Num cols of matrix A and num rows of B
-
-                    1.0,                           // const double alpha
-                    left_matrix_or_inverse,        // const double *A
-                    design_matrix_num_columns,     // const CBLAS_INDEX lda
-
-                    rhs_col_vec,                   // const double *B
-                    1,                             // const CBLAS_INDEX ldb
-                    0.0,                           // const double beta
-
-                    beta_col_vec,                  // double *C
-                    1                              // const CBLAS_INDEX ldc
+                // Matrix left_matrix_or_inverse is symmetric, so use the specialised function:
+                cblas_dsymm( // returns void
+                    CBLAS_LAYOUT::CblasRowMajor, // OPENBLAS_CONST enum CBLAS_ORDER Order,
+                    CBLAS_SIDE::CblasLeft,       // OPENBLAS_CONST enum CBLAS_SIDE Side,     Left matrix (A) is symmetric, not B
+                    CBLAS_UPLO::CblasUpper,      // OPENBLAS_CONST enum CBLAS_UPLO Uplo,
+                    design_matrix_num_columns,   // OPENBLAS_CONST blasint M,                Num rows in target matrix C
+                    1,                           // OPENBLAS_CONST blasint N,                Num columns in target matrix C
+                    1.0,                         // OPENBLAS_CONST double alpha,
+                    left_matrix_or_inverse,      // OPENBLAS_CONST double *A,
+                    design_matrix_num_columns,   // OPENBLAS_CONST blasint lda,
+                    rhs_col_vec,                 // OPENBLAS_CONST double *B,
+                    1,                           // OPENBLAS_CONST blasint ldb,
+                    0.0,                         // OPENBLAS_CONST double beta,
+                    beta_col_vec,                // double *C,
+                    1                            // OPENBLAS_CONST blasint ldc
                 );
 
                 std::cout << "Final beta vector:\n";
