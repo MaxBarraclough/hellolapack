@@ -6,8 +6,9 @@
 //  (tested against OpenBLAS) and matrix inversion using OpenBLAS LAPACK
 
 
-
+#include <cstddef> // for std::size_t
 #include <iostream>
+#include <iomanip> // For std::setw
 #include <memory> // For std::unique_ptr
 #include <array>  // For std::size which gives count of a raw array
 #include <limits> // For std::numeric_limits
@@ -20,9 +21,9 @@
 
 static void use_sgemm()
 {
-    constexpr size_t square_matrix_order = 3;
+    constexpr std::size_t square_matrix_order = 3;
 
-    constexpr size_t square_matrix_count
+    constexpr std::size_t square_matrix_count
       = square_matrix_order * square_matrix_order;
 
 
@@ -74,7 +75,7 @@ static void use_sgemm()
     );
 
 
-    std::cout << "Output of matrix multiplication using doubles:\n";
+    std::cout << "Output of matrix multiplication using single-precision floats:\n";
     std::cout << output_matrix[0] << ' ' << output_matrix[1] << ' ' << output_matrix[2] << '\n';
     std::cout << output_matrix[3] << ' ' << output_matrix[4] << ' ' << output_matrix[5] << '\n';
     std::cout << output_matrix[6] << ' ' << output_matrix[7] << ' ' << output_matrix[8] << '\n';
@@ -83,11 +84,95 @@ static void use_sgemm()
 
 
 
+static void use_sgemm_block_matrices()
+{
+    constexpr std::size_t square_matrix_order = 6;
+
+    constexpr std::size_t square_matrix_count
+      = square_matrix_order * square_matrix_order;
+
+
+    // Very small matrices, no need to use heap
+    // Unpadded row-major representation for simplicity
+    float matrix1[] =
+    { 1.0f, 2.0f, 3.0f,   0.0f, 0.0f, 0.0f,
+      4.0f, 5.0f, 6.0f,   0.0f, 0.0f, 0.0f,
+      7.0f, 8.0f, 9.0f,   0.0f, 0.0f, 0.0f,
+
+      0.0f, 0.0f, 0.0f,  10.0f,20.0f,30.0f,
+      0.0f, 0.0f, 0.0f,  40.0f,50.0f,60.0f,
+      0.0f, 0.0f, 0.0f,  70.0f,80.0f,90.0f
+    };
+    // Recall std::size gives count, not size like sizeof
+    static_assert( std::size(matrix1) == square_matrix_count );
+
+    float matrix2[] =
+    {10.0f,40.0f,70.0f,   0.0f, 0.0f, 0.0f,
+     20.0f,50.0f,80.0f,   0.0f, 0.0f, 0.0f,
+     30.0f,60.0f,90.0f,   0.0f, 0.0f, 0.0f,
+
+      0.0f, 0.0f, 0.0f,  1.0f, 4.0f, 7.0f,
+      0.0f, 0.0f, 0.0f,  2.0f, 5.0f, 8.0f,
+      0.0f, 0.0f, 0.0f,  3.0f, 6.0f, 9.0f
+    };
+    static_assert( std::size(matrix2) == square_matrix_count );
+
+    float output_matrix[square_matrix_count]; // = {0.0f};
+    // https://www.netlib.org/clapack/cblas/dgemm.c
+    // https://www.math.utah.edu/software/lapack/lapack-blas/dsymm.html
+    // say that:
+    //   When BETA is supplied as zero then C need not be set on input.
+
+    // Recall that lda and ldb are for customising stride (e.g. padding)
+
+    // Recall CBLAS_ORDER and CBLAS_LAYOUT are synonyms
+    cblas_sgemm(
+        CBLAS_ORDER::CblasRowMajor,    // CBLAS_LAYOUT layout
+        CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransA
+        CBLAS_TRANSPOSE::CblasNoTrans, // CBLAS_TRANSPOSE TransB
+
+        square_matrix_order,           // const CBLAS_INDEX M
+        square_matrix_order,           // const CBLAS_INDEX N
+        square_matrix_order,           // const CBLAS_INDEX K
+
+        1.0f,                          // const float alpha
+        matrix1,                       // const float *A
+        square_matrix_order,           // const CBLAS_INDEX lda
+
+        matrix2,                       // const float *B
+        square_matrix_order,           // const CBLAS_INDEX ldb
+        0.0f,                          // const float beta
+
+        output_matrix,                 // float *C
+        square_matrix_order            // const CBLAS_INDEX ldc
+    );
+
+    std::cout << "Output of matrix multiplication using single-precision floats (block matrix example)\n";
+
+    std::size_t idx = 0;
+//  std::cout << std::left; // No good, causes left alignment and trailing whitespace
+//  std::cout << std::internal; // Equivalent to right, for our purposes
+//  std::cout << std::right; // This is the default
+    for (std::size_t row_counter = 0; row_counter != square_matrix_order; ++row_counter)
+    {
+        for (std::size_t col_counter = 0; col_counter != square_matrix_order; ++col_counter)
+        {
+            std::cout << std::setw(8); // Must call this every time
+            std::cout << output_matrix[idx];
+            ++idx;
+        }
+        std::cout << '\n';
+    }
+    std::cout << std::endl;
+}
+
+
+
 static void use_dgemm()
 {
-    constexpr size_t use_dgemm_square_matrix_order = 3;
+    constexpr std::size_t use_dgemm_square_matrix_order = 3;
 
-    constexpr size_t use_dgemm_square_matrix_count
+    constexpr std::size_t use_dgemm_square_matrix_count
       = use_dgemm_square_matrix_order * use_dgemm_square_matrix_order;
 
 
@@ -204,9 +289,9 @@ static void use_dgemm()
 
 static void use_invert_matrix()
 {
-    constexpr size_t square_matrix_order = 2;
+    constexpr std::size_t square_matrix_order = 2;
 
-    constexpr size_t square_matrix_count
+    constexpr std::size_t square_matrix_count
       = square_matrix_order * square_matrix_order;
 
 
@@ -304,7 +389,7 @@ than the naive approach, see related:
 https://stackoverflow.com/questions/7621520/element-wise-vector-vector-multiplication-in-blas#comment112278219_13433038
 */
 
-    const size_t matrix_order = 7;
+    const std::size_t matrix_order = 7;
 
     double matrix1[] = {
           1.1,
@@ -353,10 +438,10 @@ https://stackoverflow.com/questions/7621520/element-wise-vector-vector-multiplic
 
 static void use_sgemm_on_binary_matrix()
 {
-    constexpr size_t matrix_num_cols =  4;
-    constexpr size_t matrix_num_rows = 10;
+    constexpr std::size_t matrix_num_cols =  4;
+    constexpr std::size_t matrix_num_rows = 10;
 
-    constexpr size_t matrix_element_count
+    constexpr std::size_t matrix_element_count
         = matrix_num_cols * matrix_num_rows;
 
     // Very small matrices, no need to use heap
@@ -410,7 +495,8 @@ static void use_sgemm_on_binary_matrix()
 // TODO try this using LAPACKE_sgemqr
     // Recall CBLAS_ORDER and CBLAS_LAYOUT are synonyms.
     // Recall also that cblas_sgemm returns NULL.
-if (false)
+
+// if (false)
     cblas_sgemm(
         CBLAS_ORDER::CblasRowMajor,    // CBLAS_LAYOUT layout
         CBLAS_TRANSPOSE::CblasTrans,   // CBLAS_TRANSPOSE TransA
@@ -473,7 +559,7 @@ lapack_int result_status = LAPACKE_sgemqrt(
 );
 #endif
 
-LAPACKE_sgemm;
+// LAPACKE_sgemm; // Does not exist
 
 
     std::cout << "Output of matrix multiplication using doubles:\n";
@@ -496,7 +582,8 @@ int main(int argc, char *argv[])
 //  use_dgemm();
 //  use_invert_matrix();
 //  use_dtbmv();
-    use_sgemm_on_binary_matrix();
+//  use_sgemm_on_binary_matrix();
+    use_sgemm_block_matrices();
 
     return 0;
 }
