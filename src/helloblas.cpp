@@ -293,6 +293,115 @@ static void use_dgemm()
 
 
 
+static void polynomial_regresssion_using_lapack()
+{
+
+    // Recall it's a row per object, and a column per variable.
+    // Recall also there must be strictly more rows (objects) than cols (vars).
+    constexpr std::size_t design_matrix_num_rows    = 5;
+    constexpr std::size_t design_matrix_num_columns = 3;
+
+    constexpr std::size_t design_matrix_count
+      = design_matrix_num_columns * design_matrix_num_rows;
+
+
+// All 1s
+//  double the_y_vector[] = // Column vector
+//  { 1.0,
+//    1.0,
+//    1.0,
+//    1.0,
+//    1.0
+//  };
+
+// Straight line of gradient 1 passing through the origin:
+//  double the_y_vector[] = // Column vector
+//  { 1.0,
+//    2.0,
+//    3.0,
+//    4.0,
+//    5.0
+//  };
+
+// Like 'y=x^2'
+//  double the_y_vector[] = // Column vector
+//  { 1.0,
+//    4.0,
+//    9.0,
+//   16.0,
+//   25.0
+//  };
+
+// Like 'y = (x+1)^2 + 10', i.e. 'y = x^2 + 2x + 1 + 10'
+    double y_or_beta_vec[] = // Column vector
+    { 4.0 + 10.0,
+      9.0 + 10.0,
+     16.0 + 10.0,
+     25.0 + 10.0,
+     36.0 + 10.0
+    };
+
+    static_assert( std::size(y_or_beta_vec) == design_matrix_num_rows );
+
+//  // Makes more sense to hold the transpose
+//  double the_design_matrix_transposed[] =
+//  {
+//      1.0,         1.0,         1.0,         1.0,         1.0,        // Always 1
+//      1.0,         2.0,         3.0,         4.0,         5.0,        // X^1
+//      (1.0 * 1.0), (2.0 * 2.0), (3.0 * 3.0), (4.0 * 4.0), (5.0 * 5.0) // X^2
+//  };
+//  static_assert( std::size(the_design_matrix_transposed) == design_matrix_count );
+
+    double the_design_matrix[] =
+    { // Always 1 | x^1  | x^2
+        1.0,        1.0,   (1.0 * 1.0),
+        1.0,        2.0,   (2.0 * 2.0),
+        1.0,        3.0,   (3.0 * 3.0),
+        1.0,        4.0,   (4.0 * 4.0),
+        1.0,        5.0,   (5.0 * 5.0)
+    };
+    static_assert( std::size(the_design_matrix) == design_matrix_count );
+
+
+// https://www.netlib.org/lapack/explore-html/d8/d83/group__gels_gaa65298f8ef218a625e40d0da3c95803c.html#gaa65298f8ef218a625e40d0da3c95803c
+// After execution, B shall hold the following (from the docs):
+//   if TRANS = 'N' and m >= n, rows 1 to n of B contain the least squares
+//   solution vectors; the residual sum of squares for the solution in each
+//   column is given by the sum of squares of elements N+1 to M in that column
+
+    const lapack_int result =
+      LAPACKE_dgels(
+          LAPACK_ROW_MAJOR,             // int matrix_layout // Also works: CBLAS_LAYOUT::CblasRowMajor
+          'N',                          // char trans   Do not try: CBLAS_TRANSPOSE::CblasNoTrans
+          design_matrix_num_rows,       // lapack_int m     // Number of rows in matrix A
+          design_matrix_num_columns,    // lapack_int n     // Number of columns in matrix A
+          1,                            // lapack_int nrhs  // Number of columns in matrices B and X
+          the_design_matrix,            // double* a        // Full of garbage afterward (for our purposes)
+          design_matrix_num_columns,    // lapack_int lda
+          y_or_beta_vec,                // double* b        // Input holding B, output as described above
+          1                             // lapack_int ldb
+      );
+
+    if (0 == result)
+    {
+        std::cout << "Final beta vector:\n";
+        for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
+        {
+            std::cout << std::setw(16); // Must call this every time
+            std::cout << y_or_beta_vec[row_counter];
+            std::cout << '\n';
+        }
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cerr << "Error encountered. There is no output to print.";
+        std::cerr << std::endl;
+    }
+
+}
+
+
 // Unoptimised variant
 static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
 {
@@ -1017,9 +1126,13 @@ int main(int argc, char *argv[])
 //  use_dtbmv();
 //  use_sgemm_on_binary_matrix();
 //  use_sgemm_block_matrices();
+
+    std::cout << "--------\n-------- Polynomial regression, unoptimised approach:\n--------\n";
     use_invert_matrix_for_polynomial_regresssion_unoptimized();
-    std::cout << "\n--------\n\n";
+    std::cout << "--------\n-------- Polynomial regression, more optimised approach:\n--------\n";
     use_invert_matrix_for_polynomial_regresssion_optimized();
+    std::cout << "--------\n-------- Polynomial regression, best approach: just use LAPACKE function:\n--------\n";
+    polynomial_regresssion_using_lapack();
 
     return 0;
 }
