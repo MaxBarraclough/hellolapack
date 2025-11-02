@@ -2,8 +2,10 @@
 //  ABOUT
 //  =====
 //
-//  Small example program showing matrix multiplication using BLAS
-//  (tested against OpenBLAS) and matrix inversion using OpenBLAS LAPACK
+//  Small example C++ program showing example uses of LAPACK and BLAS:
+//    * Matrix multiplication (various examples)
+//    * Matrix inversion
+//    * Polynomial regression (i.e. linear regression)
 
 
 #include <cstddef> // for std::size_t
