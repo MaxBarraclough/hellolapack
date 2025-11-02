@@ -26,5 +26,5 @@ Building
 
 The following should configure, build, and run:
 
-    bash ./configure_cmake_unix.sh && ./build_unix_release.sh && ./build/helloblas
+    bash ./configure_cmake_unix.sh && ./build_unix_release.sh && ./build/hellolapack
 

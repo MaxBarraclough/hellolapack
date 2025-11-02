@@ -7,7 +7,7 @@ include(CheckIncludeFile)   # For check_include_file
 # The project is written in C++ but we must also specify C so that we can use
 # check_include_file to check for a C header file
 project(
-    helloblas
+    hellolapack
     LANGUAGES  CXX C
     VERSION    0.1
 )
@@ -67,21 +67,21 @@ ENDIF()
 # MESSAGE (${BLAS_LIBRARIES})
 # MESSAGE (${LAPACK_LIBRARIES})
 
-#configure_file(HelloBlasConfig.h.in HelloBlasConfig.h)
+#configure_file(HelloLapackConfig.h.in HelloLapackConfig.h)
 
 
 add_executable(
-    helloblas
-    "${CMAKE_SOURCE_DIR}/helloblas.cpp"
+    hellolapack
+    "${CMAKE_SOURCE_DIR}/hellolapack.cpp"
 )
 
 target_include_directories(
-    helloblas PRIVATE "${CMAKE_SOURCE_DIR}"
+    hellolapack PRIVATE "${CMAKE_SOURCE_DIR}"
 )
 
 
-# target_link_libraries(helloblas PRIVATE ${CMAKE_DL_LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} )
-target_link_libraries(helloblas PRIVATE ${CMAKE_DL_LIBS} ${LAPACK_LIBRARIES} lapacke )
+# target_link_libraries(hellolapack PRIVATE ${CMAKE_DL_LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} )
+target_link_libraries(hellolapack PRIVATE ${CMAKE_DL_LIBS} ${LAPACK_LIBRARIES} lapacke )
     # find_package LAPACK does not support LAPACKE, link lapacke directly by name
     # https://stackoverflow.com/a/77349214/
 
