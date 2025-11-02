@@ -1111,7 +1111,8 @@ lapack_int result_status = LAPACKE_sgemqrt(
 
 
 
-int main(int argc, char *argv[])
+// int main(int argc, char *argv[])
+int main() // Avoid compiler warnings as argc and argv are unused
 {
     // Assuming we're using OpenBLAS header file and binary:
 //  std::cout << openblas_get_config() << '\n';
