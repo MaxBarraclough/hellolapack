@@ -15,6 +15,14 @@ project(
 set(CMAKE_CXX_STANDARD 17) # https://cmake.org/cmake/help/latest/guide/tutorial/index.html
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+
+# https://stackoverflow.com/a/10055571/
+IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    ADD_COMPILE_OPTIONS(-Wall -Wextra -pedantic) # -Werror
+ELSEIF(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    ADD_COMPILE_OPTIONS(-Wall -Wextra -pedantic) # -Werror
+ENDIF()
+
 find_package(LAPACK REQUIRED)
 # find_package(BLAS REQUIRED) # BLA_VENDOR Generic)
 
