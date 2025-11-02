@@ -20,6 +20,40 @@
 #define FMT_WIDTH 16
 
 
+inline static void print_matrix_f(const std::size_t num_rows, const std::size_t num_cols, const float * const matrix)
+{
+    std::size_t idx = 0;
+    for (std::size_t row_counter = 0; row_counter != num_rows; ++row_counter)
+    {
+        for (std::size_t col_counter = 0; col_counter != num_cols; ++col_counter)
+        {
+            std::cout << std::setw(FMT_WIDTH); // Must call this every time
+            std::cout << matrix[idx];
+            ++idx;
+        }
+        std::cout << '\n';
+    }
+    // We do not print any trailing newline
+}
+
+inline static void print_matrix_d(const std::size_t num_rows, const std::size_t num_cols, const double * const matrix)
+{
+    std::size_t idx = 0;
+    for (std::size_t row_counter = 0; row_counter != num_rows; ++row_counter)
+    {
+        for (std::size_t col_counter = 0; col_counter != num_cols; ++col_counter)
+        {
+            std::cout << std::setw(FMT_WIDTH); // Must call this every time
+            std::cout << matrix[idx];
+            ++idx;
+        }
+        std::cout << '\n';
+    }
+    // We do not print any trailing newline
+}
+
+
+
 static void use_sgemm()
 {
     constexpr std::size_t square_matrix_order = 3;
@@ -75,11 +109,12 @@ static void use_sgemm()
         square_matrix_order            // const CBLAS_INDEX ldc
     );
 
-
     std::cout << "Output of matrix multiplication using single-precision floats:\n";
-    std::cout << output_matrix[0] << ' ' << output_matrix[1] << ' ' << output_matrix[2] << '\n';
-    std::cout << output_matrix[3] << ' ' << output_matrix[4] << ' ' << output_matrix[5] << '\n';
-    std::cout << output_matrix[6] << ' ' << output_matrix[7] << ' ' << output_matrix[8] << '\n';
+    print_matrix_f(
+        square_matrix_order, // num_rows
+        square_matrix_order, // num_cols
+        output_matrix        // matrix
+    );
     std::cout << std::endl;
 }
 
@@ -148,22 +183,13 @@ static void use_sgemm_block_matrices()
         square_matrix_order            // const CBLAS_INDEX ldc
     );
 
-    std::cout << "Output of matrix multiplication using single-precision floats (block matrix example)\n";
+    std::cout << "Output of multiplication of block matrices using single-precision floats:\n";
 
-    std::size_t idx = 0;
-//  std::cout << std::left; // No good, causes left alignment and trailing whitespace
-//  std::cout << std::internal; // Equivalent to right, for our purposes
-//  std::cout << std::right; // This is the default
-    for (std::size_t row_counter = 0; row_counter != square_matrix_order; ++row_counter)
-    {
-        for (std::size_t col_counter = 0; col_counter != square_matrix_order; ++col_counter)
-        {
-            std::cout << std::setw(FMT_WIDTH); // Must call this every time
-            std::cout << output_matrix[idx];
-            ++idx;
-        }
-        std::cout << '\n';
-    }
+    print_matrix_f(
+        square_matrix_order, // num_rows
+        square_matrix_order, // num_cols
+        output_matrix        // matrix
+    );
     std::cout << std::endl;
 }
 
@@ -217,10 +243,12 @@ static void use_dgemm()
     );
 
 
-    std::cout << "Output of matrix multiplication using floats:\n";
-    std::cout << output_matrix[0] << ' ' << output_matrix[1] << ' ' << output_matrix[2] << '\n';
-    std::cout << output_matrix[3] << ' ' << output_matrix[4] << ' ' << output_matrix[5] << '\n';
-    std::cout << output_matrix[6] << ' ' << output_matrix[7] << ' ' << output_matrix[8] << '\n';
+    std::cout << "Output of matrix multiplication using doubles:\n";
+    print_matrix_d(
+        use_dgemm_square_matrix_order, // num_rows
+        use_dgemm_square_matrix_order, // num_cols
+        output_matrix                  // matrix
+    );
     std::cout << std::endl;
 }
 
@@ -385,12 +413,11 @@ static void polynomial_regresssion_using_lapack()
     if (0 == result)
     {
         std::cout << "Final beta vector:\n";
-        for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
-        {
-            std::cout << std::setw(16); // Must call this every time
-            std::cout << y_or_beta_vec[row_counter];
-            std::cout << '\n';
-        }
+        print_matrix_d(
+            design_matrix_num_columns, // num_rows
+            1,                         // num_cols
+            y_or_beta_vec              // matrix
+        );
         std::cout << std::endl;
     }
     else
@@ -501,40 +528,23 @@ static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
 
     // Print left_matrix_or_inverse (not yet inverted).
     // Recall it's a symmetric square matrix.
-    {
-        std::cout << "Printing left_matrix_or_inverse (not yet inverted):\n";
-        std::size_t idx = 0;
-        for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
-        {
-            for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
-            {
-                std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                std::cout << left_matrix_or_inverse[idx];
-                ++idx;
-            }
-            std::cout << '\n';
-        }
-        std::cout << std::endl;
-    }
-
+    std::cout << "Printing left_matrix_or_inverse (not yet inverted):\n";
+    print_matrix_d(
+        design_matrix_num_columns, // num_rows
+        design_matrix_num_columns, // num_cols
+        left_matrix_or_inverse     // matrix
+    );
+    std::cout << std::endl;
 
     if ( 0 == invert_matrix(left_matrix_or_inverse, design_matrix_num_columns) )
     {
-        {
-            std::cout << "Printing left_matrix_or_inverse (now inverted):\n";
-            std::size_t idx = 0;
-            for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
-            {
-                for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
-                {
-                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                    std::cout << left_matrix_or_inverse[idx];
-                    ++idx;
-                }
-                std::cout << '\n';
-            }
-            std::cout << std::endl;
-        }
+        std::cout << "Printing left_matrix_or_inverse (now inverted):\n";
+        print_matrix_d(
+            design_matrix_num_columns, // num_rows
+            design_matrix_num_columns, // num_cols
+            left_matrix_or_inverse     // matrix
+        );
+        std::cout << std::endl;
 
         // Now compute product of transposed design matrix, and the y column vector.
         // This gives a column vector with the same number of rows as the transposed design matrix,
@@ -565,12 +575,11 @@ static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
             );
 
             std::cout << "Product of transposed design matrix, and the y column vector:\n";
-            for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
-            {
-                std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                std::cout << rhs_col_vec[idx];
-                std::cout << '\n';
-            }
+            print_matrix_d(
+                design_matrix_num_columns, // num_rows
+                1,                         // num_cols
+                rhs_col_vec                // matrix
+            );
             std::cout << std::endl;
 
             // Final product, of the inverted matrix and the right-hand-side
@@ -603,12 +612,11 @@ static void use_invert_matrix_for_polynomial_regresssion_unoptimized()
                 );
 
                 std::cout << "Final beta vector:\n";
-                for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
-                {
-                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                    std::cout << beta_col_vec[idx];
-                    std::cout << '\n';
-                }
+                print_matrix_d(
+                    design_matrix_num_columns, // num_rows
+                    1,                         // num_cols
+                    beta_col_vec               // matrix
+                );
                 std::cout << std::endl;
             }
         }
@@ -711,41 +719,25 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
 
     // Print left_matrix_or_inverse (not yet inverted).
     // Recall it's a symmetric square matrix.
-    {
-        std::cout << "Printing left_matrix_or_inverse (not yet inverted):\n";
-        std::size_t idx = 0;
-        for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
-        {
-            for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
-            {
-                std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                std::cout << left_matrix_or_inverse[idx];
-                ++idx;
-            }
-            std::cout << '\n';
-        }
-        std::cout << std::endl;
-    }
+    std::cout << "Printing left_matrix_or_inverse (not yet inverted):\n";
+    print_matrix_d(
+        design_matrix_num_columns, // num_rows
+        design_matrix_num_columns, // num_cols
+        left_matrix_or_inverse     // matrix
+    );
+    std::cout << std::endl;
 
 
     // Here we don't take advantage of the matrix being symmetric:
     if ( 0 == invert_matrix(left_matrix_or_inverse, design_matrix_num_columns) )
     {
-        {
-            std::cout << "Printing left_matrix_or_inverse (now inverted):\n";
-            std::size_t idx = 0;
-            for (std::size_t row_counter = 0; row_counter != design_matrix_num_columns; ++row_counter)
-            {
-                for (std::size_t col_counter = 0; col_counter != design_matrix_num_columns; ++col_counter)
-                {
-                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                    std::cout << left_matrix_or_inverse[idx];
-                    ++idx;
-                }
-                std::cout << '\n';
-            }
-            std::cout << std::endl;
-        }
+        std::cout << "Printing left_matrix_or_inverse (now inverted):\n";
+        print_matrix_d(
+            design_matrix_num_columns, // num_rows
+            design_matrix_num_columns, // num_cols
+            left_matrix_or_inverse     // matrix
+        );
+        std::cout << std::endl;
 
         // Now compute product of transposed design matrix, and the y column vector.
         // This gives a column vector with the same number of rows as the transposed design matrix,
@@ -776,12 +768,11 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
             );
 
             std::cout << "Product of transposed design matrix, and the y column vector:\n";
-            for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
-            {
-                std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                std::cout << rhs_col_vec[idx];
-                std::cout << '\n';
-            }
+            print_matrix_d(
+                design_matrix_num_columns, // num_rows
+                1,                         // num_cols
+                rhs_col_vec                // matrix
+            );
             std::cout << std::endl;
 
             // Final product, of the inverted matrix and the right-hand-side
@@ -810,13 +801,11 @@ static void use_invert_matrix_for_polynomial_regresssion_optimized()
                 );
 
                 std::cout << "Final beta vector:\n";
-                for (std::size_t idx = 0; idx != design_matrix_num_columns; ++idx)
-                {
-                    std::cout << std::setw(FMT_WIDTH); // Must call this every time
-                    std::cout << beta_col_vec[idx];
-                    std::cout << '\n';
-                }
-                std::cout << std::endl;
+                print_matrix_d(
+                    design_matrix_num_columns, // num_rows
+                    1,                         // num_cols
+                    beta_col_vec               // matrix
+                );
             }
         }
     }
@@ -856,15 +845,21 @@ static void use_invert_matrix()
 
 
     std::cout << "Matrix to invert:\n";
-    std::cout << the_matrix[0] << ' ' << the_matrix[1]  << '\n';
-    std::cout << the_matrix[2] << ' ' << the_matrix[3]  << '\n';
+    print_matrix_d(
+        square_matrix_order, // num_rows
+        square_matrix_order, // num_cols
+        the_matrix           // matrix
+    );
     std::cout << std::endl;
 
     if ( 0 == invert_matrix(the_matrix, square_matrix_order) )
     {
         std::cout << "Inverted matrix:\n";
-        std::cout << the_matrix[0] << ' ' << the_matrix[1]  << '\n';
-        std::cout << the_matrix[2] << ' ' << the_matrix[3]  << '\n';
+        print_matrix_d(
+            square_matrix_order, // num_rows
+            square_matrix_order, // num_cols
+            the_matrix           // matrix
+        );
         std::cout << std::endl;
 
         // Multiply the matrices, hopefully arriving at an identity matrix
@@ -895,8 +890,11 @@ static void use_invert_matrix()
         );
 
         std::cout << "This should be an identity matrix:\n";
-        std::cout << mult_matrix[0] << ' ' << mult_matrix[1]  << '\n';
-        std::cout << mult_matrix[2] << ' ' << mult_matrix[3]  << '\n';
+        print_matrix_d(
+            square_matrix_order, // num_rows
+            square_matrix_order, // num_cols
+            mult_matrix          // matrix
+        );
         std::cout << std::endl;
     }
     else
@@ -966,13 +964,12 @@ https://stackoverflow.com/questions/7621520/element-wise-vector-vector-multiplic
         1                              // const CBLAS_INDEX incX // The increment for elements of X, i.e. stride
     );                                 // );
 
-    std::cout        << matrix2[0];
-    std::cout << ' ' << matrix2[1];
-    std::cout << ' ' << matrix2[2];
-    std::cout << ' ' << matrix2[3];
-    std::cout << ' ' << matrix2[4];
-    std::cout << ' ' << matrix2[5];
-    std::cout << ' ' << matrix2[6];
+    std::cout << "Output of multiplying diagonal matrix by column matrix:\n";
+    print_matrix_d(
+        matrix_order, // num_rows
+        1,            // num_cols
+        matrix2       // matrix
+    );
     std::cout << std::endl;
 }
 
@@ -1103,12 +1100,12 @@ lapack_int result_status = LAPACKE_sgemqrt(
 
 // LAPACKE_sgemm; // Does not exist
 
-
     std::cout << "Output of matrix multiplication using doubles:\n";
-    std::cout << output_matrix[0]  << ' ' << output_matrix[1]  << ' ' << output_matrix[2]  << ' ' << output_matrix[3]  << '\n';
-    std::cout << output_matrix[4]  << ' ' << output_matrix[5]  << ' ' << output_matrix[6]  << ' ' << output_matrix[7]  << '\n';
-    std::cout << output_matrix[8]  << ' ' << output_matrix[9]  << ' ' << output_matrix[10] << ' ' << output_matrix[11] << '\n';
-    std::cout << output_matrix[12] << ' ' << output_matrix[13] << ' ' << output_matrix[14] << ' ' << output_matrix[15] << '\n';
+    print_matrix_f(
+        matrix_num_rows, // num_rows
+        matrix_num_cols, // num_cols
+        output_matrix    // matrix
+    );
     std::cout << std::endl;
 }
 
@@ -1120,18 +1117,57 @@ int main(int argc, char *argv[])
 //  std::cout << openblas_get_config() << '\n';
 //  std::cout << std::endl;
 
-//  use_sgemm();
-//  use_dgemm();
-//  use_invert_matrix();
-//  use_dtbmv();
-//  use_sgemm_on_binary_matrix();
-//  use_sgemm_block_matrices();
+    std::cout << "---------------------------------\n"
+                 "-- Basic matrix multiplication --\n"
+                 "--           (float)           --\n"
+                 "---------------------------------\n";
+    use_sgemm();
 
-    std::cout << "--------\n-------- Polynomial regression, unoptimised approach:\n--------\n";
+
+    std::cout << "---------------------------------\n"
+                 "-- Basic matrix multiplication --\n"
+                 "--          (double)           --\n"
+                 "---------------------------------\n";
+    use_dgemm();
+
+
+    std::cout << "---------------------------------\n"
+                 "--       Matrix inversion      --\n"
+                 "---------------------------------\n";
+    use_invert_matrix();
+
+
+    std::cout << "--------------------------------------------------\n"
+                 "-- Multiplying diagonal matrix by column vector --\n"
+                 "--------------------------------------------------\n";
+    use_dtbmv();
+
+
+    std::cout << "----------------------------------------------\n"
+                 "-- Matrix multiplication with binary matrix --\n"
+                 "----------------------------------------------\n";
+    use_sgemm_on_binary_matrix();
+
+
+    std::cout << "-----------------------------------------------\n"
+                 "-- Matrix multiplication with block matrices --\n"
+                 "-----------------------------------------------\n";
+    use_sgemm_block_matrices();
+
+    std::cout << "----------------------------------------\n"
+                 "-- Polynomial regression, unoptimised --\n"
+                 "----------------------------------------\n";
     use_invert_matrix_for_polynomial_regresssion_unoptimized();
-    std::cout << "--------\n-------- Polynomial regression, more optimised approach:\n--------\n";
+
+    std::cout << "-------------------------------------------\n"
+                 "-- Polynomial regression, more optimised --\n"
+                 "-------------------------------------------\n";
+
     use_invert_matrix_for_polynomial_regresssion_optimized();
-    std::cout << "--------\n-------- Polynomial regression, best approach: just use LAPACKE function:\n--------\n";
+
+    std::cout << "-------------------------------------------------\n"
+                 "-- Polynomial regression with LAPACKE function --\n"
+                 "-------------------------------------------------\n";
     polynomial_regresssion_using_lapack();
 
     return 0;
