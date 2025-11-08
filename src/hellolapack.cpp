@@ -323,9 +323,9 @@ static void use_dgemm()
 
 
 
-static void polynomial_regresssion_using_lapack()
+// Row-major variant
+static void polynomial_regresssion_using_lapack_rm()
 {
-
     // Recall it's a row per object, and a column per variable.
     // Recall also there must be strictly more rows (objects) than cols (vars).
     constexpr std::size_t design_matrix_num_rows    = 5;
@@ -373,16 +373,8 @@ static void polynomial_regresssion_using_lapack()
 
     static_assert( std::size(y_or_beta_vec) == design_matrix_num_rows );
 
-//  // Makes more sense to hold the transpose
-//  double the_design_matrix_transposed[] =
-//  {
-//      1.0,         1.0,         1.0,         1.0,         1.0,        // Always 1
-//      1.0,         2.0,         3.0,         4.0,         5.0,        // X^1
-//      (1.0 * 1.0), (2.0 * 2.0), (3.0 * 3.0), (4.0 * 4.0), (5.0 * 5.0) // X^2
-//  };
-//  static_assert( std::size(the_design_matrix_transposed) == design_matrix_count );
-
-    double the_design_matrix[] =
+    // Row-major representation
+    double design_matrix_rm[] =
     { // Always 1 | x^1  | x^2
         1.0,        1.0,   (1.0 * 1.0),
         1.0,        2.0,   (2.0 * 2.0),
@@ -390,7 +382,7 @@ static void polynomial_regresssion_using_lapack()
         1.0,        4.0,   (4.0 * 4.0),
         1.0,        5.0,   (5.0 * 5.0)
     };
-    static_assert( std::size(the_design_matrix) == design_matrix_count );
+    static_assert( std::size(design_matrix_rm) == design_matrix_count );
 
 
 // https://www.netlib.org/lapack/explore-html/d8/d83/group__gels_gaa65298f8ef218a625e40d0da3c95803c.html#gaa65298f8ef218a625e40d0da3c95803c
@@ -406,7 +398,7 @@ static void polynomial_regresssion_using_lapack()
           design_matrix_num_rows,       // lapack_int m     // Number of rows in matrix A
           design_matrix_num_columns,    // lapack_int n     // Number of columns in matrix A
           1,                            // lapack_int nrhs  // Number of columns in matrices B and X
-          the_design_matrix,            // double* a        // Full of garbage afterward (for our purposes)
+          design_matrix_rm,             // double* a        // Full of garbage afterward (for our purposes)
           design_matrix_num_columns,    // lapack_int lda
           y_or_beta_vec,                // double* b        // Input holding B, output as described above
           1                             // lapack_int ldb
@@ -427,8 +419,89 @@ static void polynomial_regresssion_using_lapack()
         std::cerr << "Error encountered. There is no output to print.";
         std::cerr << std::endl;
     }
-
 }
+
+
+
+// Column-major.
+// Should be no performance difference with a well optimised BLAS/LAPACK,
+// but the old Netlib implementation prefers column-major:
+// https://www.netlib.org/lapack/lapacke.html#_array_arguments
+static void polynomial_regresssion_using_lapack_cm()
+{
+    // Recall it's a row per object, and a column per variable.
+    // Recall also there must be strictly more rows (objects) than cols (vars).
+    constexpr std::size_t design_matrix_num_rows    = 5;
+    constexpr std::size_t design_matrix_num_columns = 3;
+
+    constexpr std::size_t design_matrix_count
+      = design_matrix_num_columns * design_matrix_num_rows;
+
+
+// Like 'y = (x+1)^2 + 10', i.e. 'y = x^2 + 2x + 1 + 10'
+    double y_or_beta_vec[] = // Column vector
+    { 4.0 + 10.0,
+      9.0 + 10.0,
+     16.0 + 10.0,
+     25.0 + 10.0,
+     36.0 + 10.0
+    };
+
+    static_assert( std::size(y_or_beta_vec) == design_matrix_num_rows );
+
+//  Recall the matrix is this:
+//    // Always 1 | x^1  | x^2
+//      1.0,        1.0,   (1.0 * 1.0)
+//      1.0,        2.0,   (2.0 * 2.0)
+//      1.0,        3.0,   (3.0 * 3.0)
+//      1.0,        4.0,   (4.0 * 4.0)
+//      1.0,        5.0,   (5.0 * 5.0)
+    double design_matrix_cm[] =
+    {
+        1.0,         1.0,         1.0,         1.0,         1.0,        // Always 1
+        1.0,         2.0,         3.0,         4.0,         5.0,        // X^1
+        (1.0 * 1.0), (2.0 * 2.0), (3.0 * 3.0), (4.0 * 4.0), (5.0 * 5.0) // X^2
+    };
+    static_assert( std::size(design_matrix_cm) == design_matrix_count );
+
+
+// https://www.netlib.org/lapack/explore-html/d8/d83/group__gels_gaa65298f8ef218a625e40d0da3c95803c.html#gaa65298f8ef218a625e40d0da3c95803c
+// After execution, B shall hold the following (from the docs):
+//   if TRANS = 'N' and m >= n, rows 1 to n of B contain the least squares
+//   solution vectors; the residual sum of squares for the solution in each
+//   column is given by the sum of squares of elements N+1 to M in that column
+
+    const lapack_int result =
+      LAPACKE_dgels(
+          LAPACK_COL_MAJOR,             // int matrix_layout
+          'N',                          // char trans   Do not try: CBLAS_TRANSPOSE::CblasNoTrans
+          design_matrix_num_rows,       // lapack_int m     // Number of rows in matrix A
+          design_matrix_num_columns,    // lapack_int n     // Number of columns in matrix A
+          1,                            // lapack_int nrhs  // Number of columns in matrices B and X
+          design_matrix_cm,             // double* a        // Full of garbage afterward (for our purposes)
+          design_matrix_num_rows,       // lapack_int lda
+          y_or_beta_vec,                // double* b        // Input holding B, output as described above
+          design_matrix_num_rows        // lapack_int ldb
+      );
+
+    if (0 == result)
+    {
+        std::cout << "Final beta vector:\n";
+        print_matrix_d(
+            design_matrix_num_columns, // num_rows
+            1,                         // num_cols
+            y_or_beta_vec              // matrix
+        );
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cerr << "Error encountered. There is no output to print.";
+        std::cerr << std::endl;
+    }
+}
+
+
 
 
 // Unoptimised variant
@@ -1170,8 +1243,16 @@ int main() // Avoid compiler warnings as argc and argv are unused
 
     std::cout << "-------------------------------------------------\n"
                  "-- Polynomial regression with LAPACKE function --\n"
+                 "-- (row-major)                                 --\n"
                  "-------------------------------------------------\n";
-    polynomial_regresssion_using_lapack();
+    polynomial_regresssion_using_lapack_rm();
+
+
+    std::cout << "-------------------------------------------------\n"
+                 "-- Polynomial regression with LAPACKE function --\n"
+                 "-- (column-major)                              --\n"
+                 "-------------------------------------------------\n";
+    polynomial_regresssion_using_lapack_cm();
 
     return 0;
 }
